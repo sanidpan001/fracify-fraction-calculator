@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fracify — Fraction Calculator with Step-by-Step Working</title>
+<meta name="description" content="Fracify is a free fraction calculator that shows every step: prime-factor LCD, GCD simplification, mixed numbers, and fraction to decimal to percent conversion — plus a printable homework view.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>½</text></svg>">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: { extend: {
+    colors: { board:'#13302B', boarddeep:'#0C211D', boardcard:'#1A3B34', chalk:'#F8FAFC', mint:'#5EEAD4', chalkamber:'#FBBF24' },
+    fontFamily: { hand:['"Segoe Print"','"Chalkboard SE"','"Bradley Hand"','"Comic Sans MS"','cursive'] }
+  } }
+};
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {"@type":"Question","name":"What is the least common denominator (LCD) and why do I need it?","acceptedAnswer":{"@type":"Answer","text":"The least common denominator is the smallest number that all the denominators in your problem divide into evenly. You need it to add or subtract fractions, because fractions can only be combined when they share a denominator. Fracify finds the LCD by prime-factorizing each denominator, taking the highest power of every prime, and multiplying them together."}},
+    {"@type":"Question","name":"How do I add fractions with different denominators?","acceptedAnswer":{"@type":"Answer","text":"First find the LCD of the denominators. Rewrite each fraction as an equivalent fraction with the LCD on the bottom by multiplying the top and bottom by the same number. Then add the numerators and keep the denominator. Finally simplify the answer to lowest terms. For example, 1/2 + 1/3 becomes 3/6 + 2/6 = 5/6."}},
+    {"@type":"Question","name":"How do I simplify a fraction to lowest terms?","acceptedAnswer":{"@type":"Answer","text":"Find the greatest common divisor (GCD) of the numerator and denominator, then divide both by it. For 24/36, GCD(24, 36) = 12, so 24/36 = 2/3. Fracify shows the full division steps so you can follow the working."}},
+    {"@type":"Question","name":"How do I convert a fraction to a decimal or a percentage?","acceptedAnswer":{"@type":"Answer","text":"Divide the numerator by the denominator to get the decimal — for example 3/8 = 0.375. Multiply that decimal by 100 to get the percentage: 0.375 × 100 = 37.5%. Some fractions repeat forever, like 1/3 = 0.333…, which Fracify writes as 0.(3)."}},
+    {"@type":"Question","name":"What is the difference between a mixed number and an improper fraction?","acceptedAnswer":{"@type":"Answer","text":"A mixed number pairs a whole number with a fraction, like 2 1/3. An improper fraction has a numerator larger than its denominator, like 7/3. They describe the same value: 2 1/3 = (2 × 3 + 1)/3 = 7/3. Fracify converts between the two with one toggle."}},
+    {"@type":"Question","name":"Why does dividing by a fraction mean multiplying by its reciprocal?","acceptedAnswer":{"@type":"Answer","text":"Dividing asks how many groups of the divisor fit into the dividend. Flipping the divisor and multiplying gives the same count because division is the inverse of multiplication. So 5/6 ÷ 2/3 becomes 5/6 × 3/2 = 15/12 = 5/4. Fracify shows the flip step explicitly in its working."}}
+  ]
+}
+</script>
+<style>
+  html { scroll-behavior: smooth; }
+  body {
+    background-color: #13302B;
+    background-image:
+      radial-gradient(ellipse at 20% 10%, rgba(94,234,212,.05), transparent 55%),
+      radial-gradient(ellipse at 85% 80%, rgba(251,191,36,.05), transparent 55%),
+      repeating-linear-gradient(0deg, rgba(248,250,252,.014) 0 2px, transparent 2px 4px);
+  }
+  .chalk-card {
+    background: linear-gradient(160deg, rgba(26,59,52,.92), rgba(18,44,39,.94));
+    border: 2px dashed rgba(248,250,252,.22);
+    border-radius: 1.1rem;
+    box-shadow: 0 18px 45px -18px rgba(0,0,0,.55), inset 0 1px 0 rgba(248,250,252,.06);
+  }
+  .chalk-input {
+    background: rgba(12,33,29,.75);
+    border: 2px solid rgba(248,250,252,.22);
+    border-radius: .8rem;
+    color: #F8FAFC;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .chalk-input:focus { outline: none; border-color: #5EEAD4; box-shadow: 0 0 0 3px rgba(94,234,212,.18); }
+  .chalk-input::placeholder { color: rgba(248,250,252,.35); }
+  .fracstack { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; line-height: 1.25; margin: 0 .18em; }
+  .fracstack .fnum { padding: 0 .4em; border-bottom: 2px solid currentColor; }
+  .fracstack .fden { padding: 0 .4em; }
+  .stepnum {
+    width: 2.1rem; height: 2.1rem; flex: none;
+    border: 2px solid #FBBF24; color: #FBBF24; border-radius: 9999px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700; font-family: "Segoe Print","Chalkboard SE",cursive;
+  }
+  .squiggle { height: 10px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='10'%3E%3Cpath d='M0 5 Q 15 0 30 5 T 60 5 T 90 5 T 120 5' fill='none' stroke='%235EEAD4' stroke-width='2' opacity='.55'/%3E%3C/svg%3E"); background-repeat: repeat-x; background-position: center; }
+  .opbtn.on { background: #5EEAD4; color: #0C211D; border-color: #5EEAD4; font-weight: 800; }
+  .tabbtn.on { background: rgba(94,234,212,.16); color: #5EEAD4; border-color: rgba(94,234,212,.5); }
+  .codechip { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: rgba(248,250,252,.08); border: 1px solid rgba(248,250,252,.18); border-radius: .4rem; padding: 0 .45rem; }
+  ::selection { background: rgba(94,234,212,.35); }
+  #printSheet { display: none; }
+  @media print {
+    .no-print { display: none !important; }
+    body { background: #fff !important; }
+    #printSheet { display: block !important; color: #000; }
+    #printSheet h2 { font-size: 20px; margin-bottom: 8px; }
+    #printSheet .pstep { margin: 10px 0; padding: 8px 10px; border: 1px solid #999; border-radius: 8px; break-inside: avoid; }
+    #printSheet .pstep h3 { font-size: 14px; margin-bottom: 4px; }
+    #printSheet p { font-size: 13px; margin: 2px 0; }
+  }
+</style>
+</head>
+<body id="top" class="text-chalk antialiased min-h-screen flex flex-col">
+
+<header class="no-print sticky top-0 z-50 bg-boarddeep/95 backdrop-blur border-b border-chalk/10">
+  <div class="mx-auto max-w-6xl px-4 sm:px-6 h-16 flex items-center justify-between">
+    <a href="#top" class="flex items-center gap-2.5">
+      <span class="w-9 h-9 rounded-xl bg-chalkamber text-boarddeep font-hand font-bold text-2xl flex items-center justify-center select-none">½</span>
+      <span class="text-2xl font-hand font-bold tracking-wide">Fracify</span>
+    </a>
+    <nav class="flex items-center gap-5 text-sm sm:text-base">
+      <a href="#top" class="text-chalk/80 hover:text-mint transition">Home</a>
+      <a href="https://fixoraa.tech" class="text-chalk/80 hover:text-mint transition">More Tools</a>
+    </nav>
+  </div>
+</header>
+
+<main class="flex-1 w-full">
+  <!-- HERO -->
+  <section class="no-print mx-auto max-w-6xl px-4 sm:px-6 pt-10 sm:pt-14 pb-6 text-center">
+    <p class="font-hand text-mint text-lg sm:text-xl mb-2">— the teacher's-board fraction lab —</p>
+    <h1 class="text-4xl sm:text-6xl font-hand font-bold leading-tight">Fraction Calculator<br class="sm:hidden"> <span class="text-chalkamber">&amp; Step-by-Step Solver</span></h1>
+    <p class="mt-4 text-chalk/70 max-w-2xl mx-auto text-base sm:text-lg">Add, subtract, multiply and divide fractions and mixed numbers — and see <em class="text-chalk not-italic font-semibold">every line of the working</em>, from prime-factor LCD to GCD simplification, exactly like a teacher would write it on the board.</p>
+    <div class="mt-5 flex flex-wrap justify-center gap-2 text-xs sm:text-sm">
+      <span class="px-3 py-1.5 rounded-full border border-mint/40 text-mint">✓ Full step-by-step working</span>
+      <span class="px-3 py-1.5 rounded-full border border-mint/40 text-mint">✓ Prime-factor LCD explained</span>
+      <span class="px-3 py-1.5 rounded-full border border-mint/40 text-mint">✓ Fraction ⇄ decimal ⇄ %</span>
+      <span class="px-3 py-1.5 rounded-full border border-mint/40 text-mint">✓ Printable homework view</span>
+    </div>
+  </section>
+
+<div class="no-print mx-auto max-w-6xl px-4 sm:px-6 pt-4" role="complementary" aria-label="Advertisement">
+  <div class="mx-auto text-center" style="max-width:728px">
+    <span class="block text-[10px] tracking-[0.18em] uppercase text-slate-400 mb-1.5">Advertisement</span>
+    <div class="flex justify-center overflow-hidden">
+      <div class="origin-top scale-[0.44] sm:scale-100 shrink-0">
+        <script>
+          atOptions = { 'key' : '4e68ac77881c17fe128a46565d9a4e8c', 'format' : 'iframe', 'height' : 90, 'width' : 728, 'params' : {} };
+        </script>
+        <script src="https://www.highrevenueformat.com/4e68ac77881c17fe128a46565d9a4e8c/invoke.js"></script>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- SOLVER -->
+  <section id="solver" class="no-print mx-auto max-w-6xl px-4 sm:px-6 py-8">
+    <div class="chalk-card p-5 sm:p-8">
+      <div class="flex flex-wrap items-center gap-3 mb-1">
+        <h2 class="text-2xl sm:text-3xl font-hand font-bold">The Fraction Solver</h2>
+        <span class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold bg-chalkamber text-boarddeep px-3 py-1 rounded-full">✓ Unlimited Free Usage</span>
+      </div>
+      <p class="text-chalk/60 text-sm sm:text-base mb-6">Type a fraction like <span class="codechip">3/4</span>, a mixed number like <span class="codechip">2 1/3</span>, a negative like <span class="codechip">-5/6</span>, or a whole number like <span class="codechip">7</span>. No sign-up, no limits, no watermark.</p>
+
+      <div class="grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-end">
+        <div>
+          <label for="inA" class="block text-sm font-semibold text-mint mb-2">First number</label>
+          <input id="inA" type="text" inputmode="text" maxlength="40" value="1/2" placeholder="e.g. 2 1/3" class="chalk-input w-full px-4 py-3 text-xl font-semibold tracking-wide">
+          <button id="tglA" type="button" class="mt-2 text-xs text-chalk/60 hover:text-chalkamber underline underline-offset-2"></button>
+        </div>
+        <div class="flex md:flex-col gap-2 justify-center">
+          <button type="button" data-op="+" class="opbtn on chalk-input w-12 h-12 text-2xl font-bold">+</button>
+          <button type="button" data-op="−" class="opbtn chalk-input w-12 h-12 text-2xl font-bold">−</button>
+          <button type="button" data-op="×" class="opbtn chalk-input w-12 h-12 text-2xl font-bold">×</button>
+          <button type="button" data-op="÷" class="opbtn chalk-input w-12 h-12 text-2xl font-bold">÷</button>
+        </div>
+        <div>
+          <label for="inB" class="block text-sm font-semibold text-mint mb-2">Second number</label>
+          <input id="inB" type="text" inputmode="text" maxlength="40" value="1/3" placeholder="e.g. 5/6" class="chalk-input w-full px-4 py-3 text-xl font-semibold tracking-wide">
+          <button id="tglB" type="button" class="mt-2 text-xs text-chalk/60 hover:text-chalkamber underline underline-offset-2"></button>
+        </div>
+      </div>
+
+      <div class="mt-5 flex flex-wrap gap-3">
+        <button id="btnSolve" type="button" class="px-7 py-3 rounded-xl bg-mint text-boarddeep font-extrabold text-lg hover:brightness-110 active:scale-95 transition">Solve it ✎</button>
+        <button id="btnSwap" type="button" class="px-5 py-3 rounded-xl border-2 border-chalk/25 font-semibold hover:border-chalkamber hover:text-chalkamber transition">⇄ Swap</button>
+        <button id="btnClear" type="button" class="px-5 py-3 rounded-xl border-2 border-chalk/25 font-semibold hover:border-chalkamber hover:text-chalkamber transition">Clear</button>
+      </div>
+      <div class="mt-4 flex flex-wrap gap-2 text-xs">
+        <span class="text-chalk/50 py-1.5">Try:</span>
+        <button type="button" class="exbtn codechip hover:border-mint hover:text-mint transition" data-a="2 3/4" data-b="1 1/2" data-op="−">2 3/4 − 1 1/2</button>
+        <button type="button" class="exbtn codechip hover:border-mint hover:text-mint transition" data-a="3/4" data-b="8/9" data-op="×">3/4 × 8/9</button>
+        <button type="button" class="exbtn codechip hover:border-mint hover:text-mint transition" data-a="5/6" data-b="2/3" data-op="÷">5/6 ÷ 2/3</button>
+        <button type="button" class="exbtn codechip hover:border-mint hover:text-mint transition" data-a="-7/8" data-b="3/10" data-op="+">-7/8 + 3/10</button>
+      </div>
+
+      <div id="solveError" class="hidden mt-5 p-4 rounded-xl border-2 border-red-400/60 bg-red-500/10 text-red-200 text-sm sm:text-base"></div>
+
+      <div id="resultArea" class="hidden mt-7">
+        <div class="squiggle mb-6"></div>
+        <p id="problemLine" class="text-center text-chalk/60 text-sm sm:text-base mb-2"></p>
+        <div class="text-center">
+          <div id="answerBig" class="inline-block px-8 py-5 rounded-2xl border-2 border-chalkamber/70 bg-chalkamber/10"></div>
+        </div>
+        <div class="mt-4 flex flex-wrap justify-center items-center gap-2 text-sm">
+          <span class="text-chalk/60 mr-1">Show answer as:</span>
+          <button id="ansMixed" type="button" class="tabbtn on px-4 py-1.5 rounded-full border border-chalk/25 font-semibold">Mixed</button>
+          <button id="ansImproper" type="button" class="tabbtn px-4 py-1.5 rounded-full border border-chalk/25 font-semibold">Improper</button>
+          <span id="ansDecPct" class="w-full text-center text-chalk/70 mt-1"></span>
+        </div>
+
+        <h3 class="font-hand text-2xl font-bold text-center mt-8 mb-1">📋 Show-your-work board</h3>
+        <p class="text-center text-chalk/50 text-sm mb-5">Every step a teacher would write — copy it or print it for homework.</p>
+        <div id="stepsList" class="grid gap-4 md:grid-cols-2"></div>
+
+        <div class="mt-6 flex flex-wrap justify-center gap-3">
+          <button id="btnPrint" type="button" class="px-6 py-3 rounded-xl bg-chalkamber text-boarddeep font-extrabold hover:brightness-110 active:scale-95 transition">🖨 Print homework view</button>
+          <button id="btnCopy" type="button" class="px-6 py-3 rounded-xl border-2 border-mint/60 text-mint font-bold hover:bg-mint/10 transition">⧉ Copy all steps</button>
+        </div>
+      </div>
+
+      <!-- printable sheet: populated by JS, only visible in print -->
+      <div id="printSheet" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <!-- CONVERTER -->
+  <section id="converter" class="no-print mx-auto max-w-6xl px-4 sm:px-6 py-4">
+    <div class="chalk-card p-5 sm:p-8">
+      <div class="flex flex-wrap items-center gap-3 mb-1">
+        <h2 class="text-2xl sm:text-3xl font-hand font-bold">Three-Way Converter</h2>
+        <span class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold bg-chalkamber text-boarddeep px-3 py-1 rounded-full">✓ Unlimited Free Usage</span>
+      </div>
+      <p class="text-chalk/60 text-sm sm:text-base mb-5">Enter <strong class="text-chalk">any one</strong> form — fraction, decimal, or percent — and see all three, with the working shown.</p>
+      <div class="flex flex-wrap gap-2 mb-4" role="tablist" aria-label="Converter input type">
+        <button type="button" data-kind="fraction" class="ckind tabbtn on px-5 py-2 rounded-full border border-chalk/25 font-semibold">Fraction</button>
+        <button type="button" data-kind="decimal" class="ckind tabbtn px-5 py-2 rounded-full border border-chalk/25 font-semibold">Decimal</button>
+        <button type="button" data-kind="percent" class="ckind tabbtn px-5 py-2 rounded-full border border-chalk/25 font-semibold">Percent</button>
+      </div>
+      <div class="flex flex-col sm:flex-row gap-3">
+        <input id="convIn" type="text" inputmode="decimal" maxlength="40" value="3/8" placeholder="e.g. 3/8" class="chalk-input flex-1 px-4 py-3 text-xl font-semibold">
+        <button id="btnConvert" type="button" class="px-7 py-3 rounded-xl bg-mint text-boarddeep font-extrabold text-lg hover:brightness-110 active:scale-95 transition">Convert ⇄</button>
+      </div>
+      <div id="convError" class="hidden mt-4 p-4 rounded-xl border-2 border-red-400/60 bg-red-500/10 text-red-200 text-sm sm:text-base"></div>
+      <div id="convOut" class="hidden mt-6">
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="rounded-xl border border-mint/40 bg-mint/5 p-4 text-center">
+            <p class="text-xs uppercase tracking-widest text-mint mb-2">Fraction</p>
+            <p id="convFrac" class="text-2xl font-bold"></p>
+          </div>
+          <div class="rounded-xl border border-chalkamber/40 bg-chalkamber/5 p-4 text-center">
+            <p class="text-xs uppercase tracking-widest text-chalkamber mb-2">Mixed number</p>
+            <p id="convMixed" class="text-2xl font-bold"></p>
+          </div>
+          <div class="rounded-xl border border-mint/40 bg-mint/5 p-4 text-center">
+            <p class="text-xs uppercase tracking-widest text-mint mb-2">Decimal</p>
+            <p id="convDec" class="text-2xl font-bold"></p>
+            <p id="convDecNote" class="text-xs text-chalk/50 mt-1"></p>
+          </div>
+          <div class="rounded-xl border border-chalkamber/40 bg-chalkamber/5 p-4 text-center">
+            <p class="text-xs uppercase tracking-widest text-chalkamber mb-2">Percent</p>
+            <p id="convPct" class="text-2xl font-bold"></p>
+            <p id="convPctNote" class="text-xs text-chalk/50 mt-1"></p>
+          </div>
+        </div>
+        <div class="mt-4 rounded-xl border border-chalk/15 bg-boarddeep/60 p-4">
+          <p class="font-hand text-lg text-chalkamber mb-2">How the conversion works</p>
+          <div id="convSteps" class="space-y-1.5 text-sm sm:text-base text-chalk/85"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SIMPLIFIER -->
+  <section id="simplifier" class="no-print mx-auto max-w-6xl px-4 sm:px-6 py-4">
+    <div class="chalk-card p-5 sm:p-8">
+      <div class="flex flex-wrap items-center gap-3 mb-1">
+        <h2 class="text-2xl sm:text-3xl font-hand font-bold">Simplify to Lowest Terms</h2>
+        <span class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold bg-chalkamber text-boarddeep px-3 py-1 rounded-full">✓ Unlimited Free Usage</span>
+      </div>
+      <p class="text-chalk/60 text-sm sm:text-base mb-5">Watch the GCD division steps shrink any fraction — like <span class="codechip">48/180</span> → <span class="codechip">4/15</span>.</p>
+      <div class="flex flex-col sm:flex-row gap-3">
+        <input id="simpIn" type="text" inputmode="text" maxlength="40" value="48/180" placeholder="e.g. 48/180" class="chalk-input flex-1 px-4 py-3 text-xl font-semibold">
+        <button id="btnSimplify" type="button" class="px-7 py-3 rounded-xl bg-mint text-boarddeep font-extrabold text-lg hover:brightness-110 active:scale-95 transition">Simplify ✂</button>
+      </div>
+      <div id="simpError" class="hidden mt-4 p-4 rounded-xl border-2 border-red-400/60 bg-red-500/10 text-red-200 text-sm sm:text-base"></div>
+      <div id="simpOut" class="hidden mt-6">
+        <div class="text-center mb-4">
+          <span id="simpFrom" class="text-2xl text-chalk/60"></span>
+          <span class="text-3xl text-chalkamber mx-3">→</span>
+          <span id="simpTo" class="text-4xl font-extrabold text-mint"></span>
+        </div>
+        <div class="rounded-xl border border-chalk/15 bg-boarddeep/60 p-4">
+          <p class="font-hand text-lg text-chalkamber mb-2">GCD division steps</p>
+          <div id="simpSteps" class="space-y-1.5 text-sm sm:text-base text-chalk/85 font-mono"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+<div class="no-print mx-auto max-w-6xl px-4 sm:px-6 pb-4" role="complementary" aria-label="Advertisement">
+  <div class="mx-auto text-center" style="max-width:728px">
+    <span class="block text-[10px] tracking-[0.18em] uppercase text-slate-400 mb-1.5">Advertisement</span>
+    <div class="flex justify-center overflow-hidden">
+      <script async src="https://js.wpadmngr.com/static/adManager.js" data-admpid="464498"></script>
+    </div>
+  </div>
+</div>
+
+  <!-- SEO ARTICLE -->
+  <article class="mx-auto max-w-4xl px-4 sm:px-6 py-10 text-chalk/85 leading-relaxed">
+    <h2 class="font-hand text-3xl sm:text-4xl font-bold text-chalk mb-6">The Complete Guide to Working with Fractions</h2>
+
+    <h3 class="font-hand text-2xl font-bold text-mint mt-8 mb-3">What a fraction really means</h3>
+    <p class="mb-4">A fraction is simply a way of writing a division that has not been carried out yet. When you write 3/4, you are saying "3 divided by 4" — three whole things shared equally among four people, or three parts out of four equal slices of a whole. The number on top, the <strong class="text-chalk">numerator</strong>, counts how many parts you have. The number on the bottom, the <strong class="text-chalk">denominator</strong>, tells you how many equal parts make one whole. This two-part structure is what makes fractions so powerful: they can describe exact values that decimals can only approximate. The fraction 1/3, for instance, is exact — it means one part of three — while its decimal form 0.333… goes on forever without ever quite finishing. Understanding this division-meaning is the key to every fraction skill that follows, because adding, subtracting, multiplying and dividing fractions are all just organized ways of handling that unfinished division.</p>
+    <p class="mb-4">Fractions show up far beyond the classroom. Cooks halve and double recipes with them, carpenters measure in sixteenths of an inch, musicians count beats in 3/4 time, and pharmacists calculate doses with them. Any tool that claims to teach fractions should therefore do more than spit out an answer: it should show the reasoning, step by step, so the skill transfers to real life. That is the philosophy behind the solver above — every result comes with a full teacher-style board of working you can follow, copy, or print.</p>
+
+    <h3 class="font-hand text-2xl font-bold text-mint mt-8 mb-3">Adding and subtracting: why denominators must match</h3>
+    <p class="mb-4">You can only add or subtract fractions directly when they share a denominator, and the reason is wonderfully concrete. Adding 1/4 + 2/4 works because both fractions are measured in the same unit — quarters. One quarter plus two quarters is three quarters, and the denominator simply stays put: 3/4. But 1/2 + 1/3 mixes two different units — halves and thirds — the way adding 1 metre to 1 yard mixes units. Before combining them you must convert both to a common unit, and in fraction-land that common unit is a <strong class="text-chalk">common denominator</strong>.</p>
+    <p class="mb-4">Any common multiple of the two denominators will do the job, but the <strong class="text-chalk">least common denominator (LCD)</strong> keeps the numbers small and the working tidy. For 1/2 + 1/3, the denominators are 2 and 3, and the smallest number both divide into is 6. Convert: 1/2 becomes 3/6 (multiply top and bottom by 3) and 1/3 becomes 2/6 (multiply top and bottom by 2). Now the units match and you add the numerators: 3/6 + 2/6 = 5/6. Subtraction works identically — the minus sign simply applies to the second numerator, so 5/6 − 1/4 becomes 10/12 − 3/12 = 7/12. One classic mistake is to add the denominators as well as the numerators (1/2 + 1/3 ≠ 2/5); remembering that the denominator is the <em>unit</em>, not a quantity, makes that error impossible.</p>
+
+    <h3 class="font-hand text-2xl font-bold text-mint mt-8 mb-3">Finding the LCD with prime factorization</h3>
+    <p class="mb-4">For small denominators you can spot the LCD by listing multiples, but the reliable method for any size of number is <strong class="text-chalk">prime factorization</strong>. Break each denominator into its prime building blocks, take the highest power of every prime that appears, and multiply those together. Consider 1/8 + 5/12. Factor the denominators: 8 = 2³ and 12 = 2² × 3. The primes involved are 2 and 3. The highest power of 2 is 2³ (from the 8), and the highest power of 3 is 3¹ (from the 12). Multiply: 2³ × 3 = 8 × 3 = 24. So the LCD is 24, and you can verify it: 24 is the smallest number divisible by both 8 and 12.</p>
+    <p class="mb-4">Why does this method always work? Each denominator's prime factorization describes exactly what it is "made of". To build a number divisible by both denominators, you need at least as much of each prime as the hungrier denominator demands — that is precisely the highest power of each prime. Multiplying those highest powers therefore constructs the smallest number containing both factorizations, which is the least common multiple of the denominators. There is also a handy shortcut for two denominators: LCD(a, b) = (a × b) ÷ GCD(a, b). For 8 and 12, GCD(8, 12) = 4, so (8 × 12) ÷ 4 = 96 ÷ 4 = 24. The solver above uses the prime-factor method by default because it teaches the deeper idea, and switches to the GCD shortcut only when denominators grow too large for a readable factor tree.</p>
+
+    <h3 class="font-hand text-2xl font-bold text-mint mt-8 mb-3">Simplifying to lowest terms with the GCD</h3>
+    <p class="mb-4">A fraction is in <strong class="text-chalk">lowest terms</strong> when its numerator and denominator share no common factor other than 1 — for example 3/4 is in lowest terms, but 6/8 is not, because both numbers are divisible by 2. Simplifying means dividing the top and bottom by their <strong class="text-chalk">greatest common divisor (GCD)</strong>, the largest number that divides both evenly. Take 48/180: the GCD of 48 and 180 is 12, so 48 ÷ 12 = 4 and 180 ÷ 12 = 15, giving 4/15. Simplified answers are the expected convention in schoolwork and make later calculations far easier, since smaller numbers are simpler to combine.</p>
+    <p class="mb-4">Finding the GCD by hand is fastest with the <strong class="text-chalk">Euclidean division method</strong>: divide the larger number by the smaller, then divide the divisor by the remainder, repeating until a remainder of 0 appears — the last non-zero remainder is the GCD. For 48 and 180: 180 = 48 × 3 + 36, then 48 = 36 × 1 + 12, then 36 = 12 × 3 + 0, so the GCD is 12. This ancient algorithm, over two thousand years old, is still the quickest way to reduce a fraction, and it is exactly the working the Simplify tool above displays for every input. A fraction whose numerator is 0, such as 0/5, is already fully simplified to 0, while a zero denominator is never allowed — division by zero has no meaning, and the solver will tell you so plainly.</p>
+
+    <h3 class="font-hand text-2xl font-bold text-mint mt-8 mb-3">Mixed numbers and improper fractions</h3>
+    <p class="mb-4">A <strong class="text-chalk">mixed number</strong> like 2 1/3 pairs a whole number with a proper fraction, and it is how we naturally speak about quantities: "two and a third cups of flour". An <strong class="text-chalk">improper fraction</strong> like 7/3 has a numerator at least as large as its denominator, and it is how fractions prefer to be calculated with. Converting a mixed number to an improper fraction is a two-second routine: multiply the whole number by the denominator, add the numerator, and keep the denominator. So 2 1/3 = (2 × 3 + 1)/3 = 7/3. Going the other way, divide the numerator by the denominator: the quotient is the whole part and the remainder becomes the new numerator. For 7/3: 7 ÷ 3 = 2 remainder 1, so 7/3 = 2 1/3.</p>
+    <p class="mb-4">Always convert mixed numbers to improper fractions <em>before</em> adding, subtracting, multiplying or dividing — it prevents the very common error of operating on the whole parts and fraction parts separately and forgetting to carry. Negative mixed numbers deserve care: −2 1/3 means −(2 1/3), which is −7/3, not −5/3. Keep the minus sign with the whole value and apply it to everything. The solver's toggle lets you flip any operand or answer between mixed and improper form instantly, so you can enter a problem the way it was given and read the answer the way you need it.</p>
+
+    <h3 class="font-hand text-2xl font-bold text-mint mt-8 mb-3">Multiplying and dividing fractions</h3>
+    <p class="mb-4">Multiplication is the kindest fraction operation: no common denominator needed. Multiply the numerators together, multiply the denominators together, and simplify. So 3/4 × 8/9 = 24/36 = 2/3. A lovely efficiency trick is to <strong class="text-chalk">cancel common factors before multiplying</strong>: in 3/4 × 8/9, the 3 and 9 share a factor of 3, and the 4 and 8 share a factor of 4, so you can reduce first and multiply small numbers instead. Multiplying by a whole number is just as easy — write the whole number over 1 first: 5 × 2/3 = 5/1 × 2/3 = 10/3 = 3 1/3.</p>
+    <p class="mb-4">Division looks scarier but reduces to multiplication with one extra step: <strong class="text-chalk">flip the second fraction and multiply</strong>. This "invert and multiply" rule works because dividing by a number is the same as multiplying by its reciprocal — asking "how many 2/3s fit into 5/6?" is equivalent to scaling 5/6 by 3/2. So 5/6 ÷ 2/3 becomes 5/6 × 3/2 = 15/12 = 5/4 = 1 1/4. One hard rule: you can never divide by a fraction equal to zero, such as 0/5, because that would mean dividing by zero itself. The solver catches this case and explains it instead of producing nonsense.</p>
+
+    <h3 class="font-hand text-2xl font-bold text-mint mt-8 mb-3">Converting between fractions, decimals and percentages</h3>
+    <p class="mb-4">Fractions, decimals and percentages are three costumes worn by the same numbers, and fluency means changing costume at will. To turn a fraction into a decimal, divide the numerator by the denominator: 3/8 = 3 ÷ 8 = 0.375. To turn that decimal into a percentage, multiply by 100 (which just shifts the decimal point two places right): 0.375 = 37.5%. Going the other direction, a percentage becomes a fraction over 100 — 37.5% = 37.5/100 = 375/1000 = 3/8 after simplifying — and a decimal becomes a fraction over a power of 10: 0.125 = 125/1000 = 1/8.</p>
+    <p class="mb-4">Some fractions refuse to terminate as decimals. Dividing 1 by 3 gives 0.333… with the 3 repeating forever, because no power of 10 is divisible by 3. Mathematicians write this as 0.(3), with the repeating digits in parentheses; a mixed case like 1/6 = 0.1666… is written 0.1(6). A quick way to predict termination: simplify the fraction, then look at the denominator's prime factors — if they are only 2s and 5s, the decimal terminates; any other prime means it repeats. So 7/40 terminates (40 = 2³ × 5) while 5/12 repeats (12 = 2² × 3). The converter above detects repeating cycles automatically and shows both the exact repeating form and a rounded approximation, plus the percentage equivalent.</p>
+
+    <h3 class="font-hand text-2xl font-bold text-mint mt-8 mb-3">Common mistakes and how to avoid them</h3>
+    <p class="mb-4">Most fraction errors come from a handful of habits. First, <strong class="text-chalk">adding denominators</strong>: 1/2 + 1/3 is 5/6, never 2/5 — the denominator names the unit, and units must match before adding. Second, <strong class="text-chalk">forgetting to simplify</strong>: an answer of 4/6 is correct but unfinished; the expected form is 2/3. Third, <strong class="text-chalk">mishandling mixed numbers in multiplication</strong>: 2 1/2 × 3 is not 6 1/2 — convert first (5/2 × 3/1 = 15/2 = 7 1/2). Fourth, <strong class="text-chalk">sign errors with negatives</strong>: −3/4 + 1/2 = −1/4, and subtracting a negative adds: 1/2 − (−1/4) = 3/4. Fifth, <strong class="text-chalk">dividing in the wrong order</strong>: a ÷ b flips b, never a. The surest defense is the habit this page is built around: write every step down. Estimation helps too — before calculating 7/8 + 9/10, notice both are near 1, so the answer should be near 2 (it is 71/40 = 1 31/40). If your exact answer disagrees wildly with your estimate, re-check the working rather than the arithmetic.</p>
+
+    <h3 class="font-hand text-2xl font-bold text-mint mt-8 mb-3">Practice pointers for students and parents</h3>
+    <p class="mb-4">Mastery of fractions is built in layers. Start with <strong class="text-chalk">equivalent fractions</strong> — the idea that 1/2 = 2/4 = 3/6 — because every later skill is an application of it. Then practice simplifying with the GCD until reducing feels automatic; it halves the size of every subsequent calculation. Next, drill the LCD method on pairs like 3/8 and 5/12 until the prime-factor routine is muscle memory. Only then combine everything in mixed-operation problems. When checking homework, the printable view on this page produces a clean problem-and-steps sheet that mirrors what teachers expect to see: the LCD reasoning, the equivalent fractions, the operation, the GCD simplification, and the final mixed number. Copy the steps by hand rather than just reading them — writing the working yourself is what moves the method from the screen into long-term memory. And whenever a result looks suspicious, convert it to a decimal for a sanity check: if 2/3 + 1/4 gave you 11/12 ≈ 0.917, a quick mental check (0.667 + 0.25 = 0.917) confirms you are right.</p>
+  </article>
+
+  <!-- FAQS -->
+  <section id="faqs" class="mx-auto max-w-4xl px-4 sm:px-6 pb-12">
+    <h2 class="font-hand text-3xl font-bold text-center mb-6">Frequently Asked Questions</h2>
+    <div class="space-y-4">
+      <details class="chalk-card p-5">
+        <summary class="font-semibold text-lg cursor-pointer text-mint">What is the least common denominator (LCD) and why do I need it?</summary>
+        <p class="mt-3 text-chalk/75">The LCD is the smallest number that all the denominators in your problem divide into evenly. You need it to add or subtract fractions, because fractions can only be combined when they share a denominator. Fracify finds it by prime-factorizing each denominator, taking the highest power of every prime, and multiplying them together.</p>
+      </details>
+      <details class="chalk-card p-5">
+        <summary class="font-semibold text-lg cursor-pointer text-mint">How do I add fractions with different denominators?</summary>
+        <p class="mt-3 text-chalk/75">Find the LCD, rewrite each fraction as an equivalent fraction with the LCD on the bottom (multiplying top and bottom by the same number), then add the numerators and keep the denominator. Finally, simplify. Example: 1/2 + 1/3 = 3/6 + 2/6 = 5/6.</p>
+      </details>
+      <details class="chalk-card p-5">
+        <summary class="font-semibold text-lg cursor-pointer text-mint">How do I simplify a fraction to lowest terms?</summary>
+        <p class="mt-3 text-chalk/75">Find the greatest common divisor (GCD) of the numerator and denominator — the Euclidean division method is fastest — then divide both by it. For 24/36, GCD(24, 36) = 12, so 24/36 = 2/3. The Simplify tool above shows every division step.</p>
+      </details>
+      <details class="chalk-card p-5">
+        <summary class="font-semibold text-lg cursor-pointer text-mint">How do I convert a fraction to a decimal or a percentage?</summary>
+        <p class="mt-3 text-chalk/75">Divide the numerator by the denominator for the decimal (3/8 = 0.375), then multiply by 100 for the percentage (37.5%). Repeating decimals like 1/3 = 0.333… are written 0.(3). The converter detects repeating cycles automatically.</p>
+      </details>
+      <details class="chalk-card p-5">
+        <summary class="font-semibold text-lg cursor-pointer text-mint">What is the difference between a mixed number and an improper fraction?</summary>
+        <p class="mt-3 text-chalk/75">A mixed number pairs a whole number with a fraction (2 1/3); an improper fraction has a numerator at least as large as its denominator (7/3). They are the same value: 2 1/3 = (2 × 3 + 1)/3 = 7/3. Always convert mixed numbers to improper form before calculating.</p>
+      </details>
+      <details class="chalk-card p-5">
+        <summary class="font-semibold text-lg cursor-pointer text-mint">Why does dividing by a fraction mean multiplying by its reciprocal?</summary>
+        <p class="mt-3 text-chalk/75">Division is the inverse of multiplication, so dividing by a number equals multiplying by its reciprocal. 5/6 ÷ 2/3 becomes 5/6 × 3/2 = 15/12 = 5/4 = 1 1/4. The solver shows the flip step explicitly so the rule never feels like magic.</p>
+      </details>
+    </div>
+  </section>
+</main>
+
+<footer class="no-print border-t border-chalk/10 bg-boarddeep/80">
+  <div class="mx-auto max-w-6xl px-4 sm:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div class="flex items-center gap-2.5">
+      <span class="w-8 h-8 rounded-lg bg-chalkamber text-boarddeep font-hand font-bold text-xl flex items-center justify-center">½</span>
+      <span class="font-hand font-bold text-xl">Fracify</span>
+    </div>
+    <p class="text-chalk/50 text-sm text-center">Free fraction calculator with step-by-step working. No sign-up, no limits.</p>
+    <nav class="flex items-center gap-5 text-sm">
+      <a href="#top" class="text-chalk/60 hover:text-mint transition">Home</a>
+      <a href="https://fixoraa.tech" class="text-chalk/60 hover:text-mint transition">More Tools</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+/* __PURE_START__ */
+// Fracify pure logic — no DOM, no I/O. BigInt-based for large-number safety.
+
+function bAbs(a){ a = BigInt(a); return a < 0n ? -a : a; }
+
+function bGcd(a, b){
+  a = bAbs(a); b = bAbs(b);
+  while(b !== 0n){ var t = a % b; a = b; b = t; }
+  return a;
+}
+
+function bLcm(a, b){
+  a = bAbs(a); b = bAbs(b);
+  if(a === 0n || b === 0n) return 0n;
+  return (a / bGcd(a, b)) * b;
+}
+
+// Fraction shape: { n: BigInt, d: BigInt }. Denominator always positive; sign lives on n.
+function makeFrac(n, d){
+  n = BigInt(n); d = BigInt(d);
+  if(d === 0n) throw new Error('Denominator cannot be zero — a fraction like 3/0 has no meaning.');
+  if(d < 0n){ n = -n; d = -d; }
+  return { n: n, d: d };
+}
+
+function simplifyFrac(n, d){
+  var f = makeFrac(n, d);
+  if(f.n === 0n) return { n: 0n, d: 1n, g: f.d };
+  var g = bGcd(f.n, f.d);
+  return { n: f.n / g, d: f.d / g, g: g };
+}
+
+function addRaw(a, b){ return { n: a.n * b.d + b.n * a.d, d: a.d * b.d }; }
+function subRaw(a, b){ return { n: a.n * b.d - b.n * a.d, d: a.d * b.d }; }
+function mulRaw(a, b){ return { n: a.n * b.n, d: a.d * b.d }; }
+function divRaw(a, b){
+  if(b.n === 0n) throw new Error('Cannot divide by a fraction equal to zero.');
+  return { n: a.n * b.d, d: a.d * b.n };
+}
+
+function finishOp(raw){
+  var s = simplifyFrac(raw.n, raw.d);
+  return { raw: makeFrac(raw.n, raw.d), res: { n: s.n, d: s.d }, g: s.g };
+}
+function addFrac(a, b){ return finishOp(addRaw(a, b)); }
+function subFrac(a, b){ return finishOp(subRaw(a, b)); }
+function mulFrac(a, b){ return finishOp(mulRaw(a, b)); }
+function divFrac(a, b){ return finishOp(divRaw(a, b)); }
+
+// Mixed -> improper. w may be negative; "-2 1/3" means -(2 1/3).
+function mixedToImproper(w, n, d){
+  w = BigInt(w);
+  var f = makeFrac(n, d);
+  var neg = (w < 0n) || (w === 0n && f.n < 0n);
+  var mag = bAbs(w) * f.d + bAbs(f.n);
+  return { n: neg ? -mag : mag, d: f.d };
+}
+
+// Improper -> { w, n, d } with 0 <= n < d and sign carried by w.
+function improperToMixed(n, d){
+  var f = makeFrac(n, d);
+  var w = f.n / f.d;           // truncates toward zero; sign on w
+  var r = f.n % f.d;
+  if(r < 0n) r = -r;
+  return { w: w, n: r, d: f.d };
+}
+
+// Parse "3/4", "-3/4", "2 1/2", "-2 1/2", "5", "+7/8". Throws friendly Error otherwise.
+function parseFraction(str){
+  var orig = String(str);
+  var s = orig.trim();
+  if(!s) throw new Error('Please enter a fraction, e.g. 3/4, 2 1/2 or 5.');
+  var m = s.match(/^([+-]?)\s*(?:(\d+)\s+)?(\d+)\s*(?:\/\s*(\d+))?$/);
+  if(!m) throw new Error('Could not read "' + orig.trim() + '". Try forms like 3/4, -2 1/3 or 5.');
+  if(m[2] && !m[4]) throw new Error('Could not read "' + orig.trim() + '". A mixed number needs a fraction part, e.g. 2 1/3.');
+  var sign = (m[1] === '-') ? -1n : 1n;
+  var wAbs = m[2] ? m[2] : '0';
+  var nStr = m[3], dStr = m[4] ? m[4] : '1';
+  if(BigInt(dStr) === 0n) throw new Error('Denominator cannot be zero — a fraction like ' + nStr + '/0 has no meaning.');
+  var isMixed = !!m[2];
+  var fr = isMixed
+    ? mixedToImproper(sign * BigInt(wAbs), BigInt(nStr), BigInt(dStr))
+    : makeFrac(sign * BigInt(nStr), BigInt(dStr));
+  return { text: s, isMixed: isMixed, wAbs: wAbs, nStr: nStr, dStr: dStr,
+           signNeg: sign < 0n, frac: fr };
+}
+
+// ---- prime factorization (for LCD working) ----
+function primeFactorPairs(x){
+  x = bAbs(BigInt(x));
+  var pairs = [];
+  if(x < 2n) return pairs;
+  var n = x, e = 0;
+  while(n % 2n === 0n){ n /= 2n; e++; }
+  if(e) pairs.push([2n, BigInt(e)]);
+  var p = 3n, guard = 0;
+  while(p * p <= n && guard < 200000){
+    e = 0;
+    while(n % p === 0n){ n /= p; e++; }
+    if(e) pairs.push([p, BigInt(e)]);
+    p += 2n; guard++;
+  }
+  if(n > 1n) pairs.push([n, 1n]);
+  return pairs;
+}
+
+var SUPMAP = { '0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹' };
+function supDigits(s){
+  return String(s).split('').map(function(c){ return SUPMAP[c] || c; }).join('');
+}
+function factorPowerText(p, e){
+  p = p.toString(); e = BigInt(e);
+  return e === 1n ? p : p + supDigits(e.toString());
+}
+function factorString(x){
+  x = bAbs(BigInt(x));
+  if(x === 1n) return '1 (no prime factors)';
+  var pairs = primeFactorPairs(x);
+  return x.toString() + ' = ' + pairs.map(function(pe){ return factorPowerText(pe[0], pe[1]); }).join(' × ');
+}
+
+// LCD explanation data for denominators d1, d2.
+function lcdInfo(d1, d2){
+  d1 = bAbs(BigInt(d1)); d2 = bAbs(BigInt(d2));
+  var BIG = 1000000000n;
+  if(d1 > BIG || d2 > BIG){
+    return { lcd: bLcm(d1, d2), method: 'gcd', d1: d1, d2: d2 };
+  }
+  var f1 = primeFactorPairs(d1), f2 = primeFactorPairs(d2);
+  var map = {};
+  var add = function(pairs){
+    pairs.forEach(function(pe){
+      var k = pe[0].toString();
+      if(!map[k] || map[k][1] < pe[1]) map[k] = pe;
+    });
+  };
+  add(f1); add(f2);
+  var highest = Object.keys(map).map(function(k){ return map[k]; })
+    .sort(function(a, b){ return a[0] < b[0] ? -1 : 1; });
+  var lcd = highest.reduce(function(a, pe){ return a * (pe[0] ** pe[1]); }, 1n);
+  return { lcd: lcd, method: 'prime', d1: d1, d2: d2, f1: f1, f2: f2, highest: highest };
+}
+function highestPowerText(highest){
+  return highest.map(function(pe){ return factorPowerText(pe[0], pe[1]); }).join(' × ');
+}
+
+// Euclidean GCD working lines (plain strings).
+function gcdSteps(a, b){
+  a = bAbs(BigInt(a)); b = bAbs(BigInt(b));
+  var lines = [];
+  if(a === 0n && b === 0n) return ['GCD(0, 0) is undefined — nothing to simplify.'];
+  if(a === 0n || b === 0n){
+    lines.push('One of the numbers is 0, so GCD(' + a + ', ' + b + ') = ' + (a === 0n ? b : a) + '.');
+    return lines;
+  }
+  lines.push('Divide the larger by the smaller, then keep dividing by each remainder:');
+  var x = a > b ? a : b, y = a > b ? b : a;
+  while(y !== 0n){
+    var q = x / y, r = x % y;
+    lines.push(x + ' = ' + y + ' × ' + q + (r === 0n ? ' + 0' : ' + ' + r));
+    x = y; y = r;
+  }
+  lines.push('Last non-zero remainder → GCD = ' + x + '.');
+  return lines;
+}
+
+// ---- decimal expansion with repeating-cycle detection ----
+function decimalParts(n, d, maxDigits){
+  maxDigits = maxDigits || 60;
+  var N = BigInt(n), D = BigInt(d);
+  if(D === 0n) throw new Error('Denominator cannot be zero.');
+  var neg = (N < 0n) !== (D < 0n);
+  N = bAbs(N); D = bAbs(D);
+  var intPart = N / D, rem = N % D;
+  var digits = [], seen = {}, repeatStart = -1, guard = 0;
+  while(rem !== 0n && guard < maxDigits){
+    var key = rem.toString();
+    if(seen[key] !== undefined){ repeatStart = seen[key]; break; }
+    seen[key] = digits.length;
+    rem *= 10n;
+    digits.push(Number(rem / D));
+    rem = rem % D;
+    guard++;
+  }
+  return { neg: neg, intPart: intPart, digits: digits, repeatStart: repeatStart,
+           terminating: rem === 0n, truncated: rem !== 0n && repeatStart < 0 };
+}
+
+function formatDecimal(n, d){
+  var p = decimalParts(n, d, 60);
+  var sign = p.neg ? '-' : '';
+  var head = sign + p.intPart.toString();
+  if(p.terminating){
+    return p.digits.length ? head + '.' + p.digits.join('') : head;
+  }
+  if(p.repeatStart >= 0){
+    var nr = p.digits.slice(0, p.repeatStart).join('');
+    var cy = p.digits.slice(p.repeatStart).join('');
+    return head + '.' + nr + '(' + cy + ')';
+  }
+  return head + '.' + p.digits.slice(0, 12).join('') + '…';
+}
+
+function formatPercent(n, d){
+  return formatDecimal(BigInt(n) * 100n, d) + '%';
+}
+
+function decimalApprox(n, d){
+  n = BigInt(n); d = BigInt(d);
+  var LIM = 9007199254740991n;
+  if(bAbs(n) > LIM || bAbs(d) > LIM) return null;
+  var v = Number(n) / Number(d);
+  if(!isFinite(v)) return null;
+  return String(Math.round(v * 1e6) / 1e6);
+}
+
+// ---- formatting ----
+function fmtFrac(f){ return f.d === 1n ? f.n.toString() : f.n.toString() + '/' + f.d.toString(); }
+function fmtMixed(mx){
+  if(mx.n === 0n) return mx.w.toString();
+  if(mx.w === 0n) return fmtFrac({ n: mx.n, d: mx.d });
+  return mx.w.toString() + ' ' + mx.n.toString() + '/' + mx.d.toString();
+}
+
+// ---- step chunks: {t} text, {f:[n,d]} fraction, {m:[w,n,d]} mixed ----
+function T(s){ return { t: String(s) }; }
+function F(n, d){ return { f: [String(n), String(d)] }; }
+function M(w, n, d){ return { m: [String(w), String(n), String(d)] }; }
+function chunkText(c){
+  if(c.t !== undefined) return c.t;
+  if(c.f) return c.f[0] + '/' + c.f[1];
+  if(c.m){
+    if(c.m[1] === '0') return c.m[0];
+    if(c.m[0] === '0') return c.m[1] + '/' + c.m[2];
+    return c.m[0] + ' ' + c.m[1] + '/' + c.m[2];
+  }
+  return '';
+}
+function lineText(line){ return line.map(chunkText).join(''); }
+function stepsText(steps){
+  return steps.map(function(s, i){
+    return 'Step ' + (i + 1) + ' — ' + s.title + '\n' +
+      s.lines.map(function(l){ return '  ' + lineText(l); }).join('\n');
+  }).join('\n');
+}
+
+// Line showing "2 1/3 = (2 × 3 + 1)/3 = 7/3"
+function improperLine(P){
+  var N = P.frac.n, D = P.frac.d;
+  var body = '(' + P.wAbs + ' × ' + P.dStr + ' + ' + P.nStr + ')/' + P.dStr;
+  return [ M(P.signNeg ? '-' + P.wAbs : P.wAbs, P.nStr, P.dStr),
+           T(' = ' + (P.signNeg ? '−' : '') + body + ' = '), F(N, D) ];
+}
+
+function simplifyStepLines(n, d){
+  // returns { lines, res:{n,d}, g }
+  var s = simplifyFrac(n, d);
+  var lines = [];
+  if(s.g === 1n){
+    lines.push([T('GCD(' + bAbs(BigInt(n)) + ', ' + bAbs(BigInt(d)) + ') = 1 — already in lowest terms: '), F(s.n, s.d)]);
+  } else {
+    gcdSteps(n, d).forEach(function(l){ lines.push([T(l)]); });
+    var an = bAbs(BigInt(n)), ad = bAbs(BigInt(d));
+    var neg = (BigInt(n) < 0n) !== (BigInt(d) < 0n);
+    lines.push([T('Divide top and bottom by ' + s.g + ': (' + an + ' ÷ ' + s.g + ')/(' + ad + ' ÷ ' + s.g + ') = '), F((neg ? -1n : 1n) * (an / s.g), ad / s.g)]);
+  }
+  return { lines: lines, res: { n: s.n, d: s.d }, g: s.g };
+}
+
+function mixedStepLine(res){
+  var mx = improperToMixed(res.n, res.d);
+  if(bAbs(res.n) < res.d) return null;
+  return [F(res.n, res.d), T(' = '), M(mx.w, mx.n, mx.d)];
+}
+
+// ---- master solver ----
+var OPWORDS = { '+': 'Add', '−': 'Subtract', '×': 'Multiply', '÷': 'Divide' };
+
+function solveProblem(op, aText, bText){
+  try{
+    var A = parseFraction(aText), B = parseFraction(bText);
+    var a = A.frac, b = B.frac;
+    var steps = [];
+    var opSym = ({ '+':'+', '-':'−', '−':'−', '*':'×', '×':'×', '/':'÷', '÷':'÷' })[op] || op;
+
+    if((A.isMixed || B.isMixed) && (opSym === '+' || opSym === '−' || opSym === '×' || opSym === '÷')){
+      var lines = [];
+      if(A.isMixed) lines.push(improperLine(A));
+      if(B.isMixed) lines.push(improperLine(B));
+      steps.push({ title: 'Write each mixed number as an improper fraction', lines: lines });
+    }
+
+    var raw, done;
+    if(opSym === '+' || opSym === '−'){
+      raw = opSym === '+' ? addRaw(a, b) : subRaw(a, b);
+      var info = lcdInfo(a.d, b.d);
+      var lLines = [];
+      if(a.d === b.d){
+        lLines.push([T('Both denominators are already ' + a.d + ' — the LCD is ' + a.d + '.')]);
+      } else if(info.method === 'prime'){
+        lLines.push([T('Factor each denominator into primes:')]);
+        lLines.push([T('• ' + factorString(info.d1))]);
+        lLines.push([T('• ' + factorString(info.d2))]);
+        lLines.push([T('Take the highest power of each prime: ' + highestPowerText(info.highest))]);
+        lLines.push([T('LCD = ' + highestPowerText(info.highest) + ' = '), T(info.lcd.toString())]);
+      } else {
+        lLines.push([T('Denominators are large, so use the GCD shortcut:')]);
+        lLines.push([T('LCD = (' + info.d1 + ' × ' + info.d2 + ') ÷ GCD(' + info.d1 + ', ' + info.d2 + ') = ' + info.lcd)]);
+      }
+      steps.push({ title: 'Find the least common denominator (LCD)', lines: lLines });
+
+      var lcd = info.lcd;
+      var m1 = lcd / a.d, m2 = lcd / b.d;
+      var rLines = [
+        [F(a.n, a.d), T(' = (' + a.n + ' × ' + m1 + ')/(' + a.d + ' × ' + m1 + ') = '), F(a.n * m1, lcd)],
+        [F(b.n, b.d), T(' = (' + b.n + ' × ' + m2 + ')/(' + b.d + ' × ' + m2 + ') = '), F(b.n * m2, lcd)]
+      ];
+      steps.push({ title: 'Rewrite both fractions with the LCD', lines: rLines });
+
+      var verb = opSym === '+' ? 'Add' : 'Subtract';
+      var nRes = opSym === '+' ? (a.n * m1 + b.n * m2) : (a.n * m1 - b.n * m2);
+      steps.push({ title: verb + ' the numerators, keep the denominator', lines: [
+        [F(a.n * m1, lcd), T(' ' + opSym + ' '), F(b.n * m2, lcd), T(' = '), F(nRes, lcd)]
+      ]});
+      done = finishOp({ n: nRes, d: lcd });
+    } else if(opSym === '×'){
+      raw = mulRaw(a, b);
+      steps.push({ title: 'Multiply the numerators, multiply the denominators', lines: [
+        [F(a.n, a.d), T(' × '), F(b.n, b.d), T(' = (' + a.n + ' × ' + b.n + ')/(' + a.d + ' × ' + b.d + ') = '), F(raw.n, raw.d)]
+      ]});
+      done = finishOp(raw);
+    } else if(opSym === '÷'){
+      if(b.n === 0n) throw new Error('Cannot divide by zero — the second number equals 0.');
+      raw = divRaw(a, b);
+      var bn = bAbs(b.n), bd = bAbs(b.d);
+      var flipNeg = b.n < 0n;
+      steps.push({ title: 'Flip the second fraction (multiply by its reciprocal)', lines: [
+        [F(a.n, a.d), T(' ÷ '), F(b.n, b.d), T(' = '), F(a.n, a.d), T(' × '), F(flipNeg ? '-' + bn : '' + bn, bd)]
+      ]});
+      steps.push({ title: 'Multiply the numerators, multiply the denominators', lines: [
+        [F(a.n, a.d), T(' × '), F(flipNeg ? '-' + bn : '' + bn, bd),
+         T(' = (' + a.n + ' × ' + (flipNeg ? '-' + bn : bn) + ')/(' + a.d + ' × ' + bd + ') = '), F(raw.n, raw.d)]
+      ]});
+      done = finishOp(raw);
+    } else {
+      throw new Error('Unknown operation.');
+    }
+
+    var simp = simplifyStepLines(done.raw.n, done.raw.d);
+    steps.push({ title: 'Simplify to lowest terms', lines: simp.lines });
+
+    var mxLine = mixedStepLine(done.res);
+    if(mxLine) steps.push({ title: 'Write as a mixed number', lines: [mxLine] });
+
+    var res = done.res;
+    var mx = improperToMixed(res.n, res.d);
+    return {
+      ok: true, op: opSym,
+      aText: A.text, bText: B.text,
+      aFrac: { n: A.frac.n, d: A.frac.d }, bFrac: { n: B.frac.n, d: B.frac.d },
+      result: { n: res.n, d: res.d },
+      resultText: fmtFrac(res),
+      resultMixed: fmtMixed(mx),
+      resultMixedParts: { w: mx.w, n: mx.n, d: mx.d },
+      resultDecimal: formatDecimal(res.n, res.d),
+      resultDecimalApprox: decimalApprox(res.n, res.d),
+      resultPercent: formatPercent(res.n, res.d),
+      steps: steps
+    };
+  } catch(e){
+    return { ok: false, message: String((e && e.message) || e) };
+  }
+}
+
+// ---- three-way converter ----
+function parseDecimalToFrac(s){
+  var orig = String(s);
+  var t = orig.trim().replace(/,/g, '');
+  var m = t.match(/^([+-]?)(\d*)\.?(\d+)$/);
+  if(!m) throw new Error('Could not read "' + orig.trim() + '" as a decimal. Try something like 0.125 or -2.5.');
+  if(m[3].length > 15) throw new Error('That decimal has too many digits — please keep it under 15 decimal places.');
+  var sign = m[1] === '-' ? -1n : 1n;
+  var intP = m[2] ? BigInt(m[2]) : 0n;
+  var den = 10n ** BigInt(m[3].length);
+  var num = sign * (intP * den + BigInt(m[3]));
+  var r = simplifyFrac(num, den);
+  return { n: r.n, d: r.d, g: r.g, numRaw: num, denRaw: den };
+}
+
+function parsePercentToFrac(s){
+  var orig = String(s);
+  var t = orig.trim().replace(/%/g, '').replace(/,/g, '');
+  var dec = parseDecimalToFrac(t);
+  var r = simplifyFrac(dec.n, dec.d * 100n);
+  return { n: r.n, d: r.d, g: r.g, pctRaw: t };
+}
+
+function convertAll(kind, value){
+  try{
+    var f, steps = [];
+    if(kind === 'fraction'){
+      var P = parseFraction(value);
+      var s = simplifyFrac(P.frac.n, P.frac.d);
+      f = { n: s.n, d: s.d };
+      steps.push([T('Read the fraction: '), F(P.frac.n, P.frac.d)]);
+      if(s.g !== 1n) steps.push([T('Simplify first (÷ GCD ' + s.g + '): '), F(f.n, f.d)]);
+      else steps.push([T('Already in lowest terms: '), F(f.n, f.d)]);
+    } else if(kind === 'decimal'){
+      var dc = parseDecimalToFrac(value);
+      f = { n: dc.n, d: dc.d };
+      steps.push([T(value.trim() + ' = ' + dc.numRaw + '/' + dc.denRaw)]);
+      if(dc.g !== 1n) steps.push([T('Simplify (÷ GCD ' + dc.g + '): '), F(f.n, f.d)]);
+      else steps.push([T('Already in lowest terms: '), F(f.n, f.d)]);
+    } else if(kind === 'percent'){
+      var pc = parsePercentToFrac(value);
+      f = { n: pc.n, d: pc.d };
+      steps.push([T(value.trim().replace(/%/g, '') + '% = ' + pc.pctRaw + '/100')]);
+      if(pc.g !== 1n) steps.push([T('Simplify (÷ GCD ' + pc.g + '): '), F(f.n, f.d)]);
+      else steps.push([T('Already in lowest terms: '), F(f.n, f.d)]);
+    } else {
+      throw new Error('Unknown conversion type.');
+    }
+    var mx = improperToMixed(f.n, f.d);
+    var dec = formatDecimal(f.n, f.d);
+    var pct = formatPercent(f.n, f.d);
+    steps.push([T('Divide for the decimal: ' + f.n + ' ÷ ' + f.d + ' = ' + dec)]);
+    steps.push([T('Times 100 for the percent: ' + dec + ' × 100 = ' + pct)]);
+    return {
+      ok: true, kind: kind,
+      frac: f, fracText: fmtFrac(f),
+      mixedParts: { w: mx.w, n: mx.n, d: mx.d }, mixedText: fmtMixed(mx),
+      decimalText: dec, decimalApprox: decimalApprox(f.n, f.d),
+      percentText: pct,
+      steps: steps
+    };
+  } catch(e){
+    return { ok: false, message: String((e && e.message) || e) };
+  }
+}
+
+// ---- simplify tool ----
+function simplifyWithSteps(text){
+  try{
+    var P = parseFraction(text);
+    var steps = [];
+    if(P.isMixed){
+      steps.push({ title: 'Write as an improper fraction first', lines: [improperLine(P)] });
+    }
+    var s = simplifyStepLines(P.frac.n, P.frac.d);
+    steps.push({ title: 'Divide top and bottom by the GCD', lines: s.lines });
+    var mx = improperToMixed(s.res.n, s.res.d);
+    return { ok: true, inputText: P.text,
+             input: { n: P.frac.n, d: P.frac.d },
+             res: { n: s.res.n, d: s.res.d }, resText: fmtFrac(s.res),
+             mixedText: fmtMixed(mx), steps: steps };
+  } catch(e){
+    return { ok: false, message: String((e && e.message) || e) };
+  }
+}
+/* __PURE_END__ */
+</script>
+
+<script>
+(function(){
+  'use strict';
+  var $ = function(id){ return document.getElementById(id); };
+
+  function esc(s){
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+  function fracHTML(n, d, big){
+    n = String(n); d = String(d);
+    if(d === '1') return '<span class="' + (big ? 'text-5xl' : 'text-2xl') + ' font-extrabold">' + esc(n) + '</span>';
+    return '<span class="fracstack ' + (big ? 'text-5xl' : 'text-2xl') + ' font-bold">' +
+      '<span class="fnum">' + esc(n) + '</span><span class="fden">' + esc(d) + '</span></span>';
+  }
+  function mixedHTML(w, n, d, big){
+    w = String(w); n = String(n); d = String(d);
+    if(n === '0') return '<span class="' + (big ? 'text-5xl' : 'text-2xl') + ' font-extrabold">' + esc(w) + '</span>';
+    if(w === '0') return fracHTML(n, d, big);
+    return '<span class="' + (big ? 'text-5xl' : 'text-2xl') + ' font-extrabold">' + esc(w) + '</span> ' + fracHTML(n, d, big);
+  }
+  function renderChunk(c){
+    if(c.t !== undefined) return esc(c.t);
+    if(c.f) return fracHTML(c.f[0], c.f[1], false);
+    if(c.m) return mixedHTML(c.m[0], c.m[1], c.m[2], false);
+    return '';
+  }
+  function renderLine(line){ return line.map(renderChunk).join(''); }
+
+  function renderSteps(steps){
+    return steps.map(function(s, i){
+      return '<div class="rounded-xl border border-chalk/15 bg-boarddeep/60 p-4 sm:p-5">' +
+        '<div class="flex items-start gap-3">' +
+          '<span class="stepnum">' + (i + 1) + '</span>' +
+          '<div class="min-w-0"><h4 class="font-hand text-lg text-chalkamber leading-snug">' + esc(s.title) + '</h4>' +
+          '<div class="mt-2 space-y-1.5 text-[15px] sm:text-base text-chalk/90">' +
+            s.lines.map(function(l){ return '<p>' + renderLine(l) + '</p>'; }).join('') +
+          '</div></div>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  /* ---------- SOLVER ---------- */
+  var currentOp = '+';
+  var ansMode = 'mixed';
+  var lastResult = null;
+
+  var inA = $('inA'), inB = $('inB');
+
+  document.querySelectorAll('.opbtn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.opbtn').forEach(function(b){ b.classList.remove('on'); });
+      btn.classList.add('on');
+      currentOp = btn.getAttribute('data-op');
+      doSolve();
+    });
+  });
+
+  function operandAltText(val){
+    try{
+      var P = parseFraction(val);
+      var fr = P.frac;
+      if(P.isMixed){
+        var s = simplifyFrac(fr.n, fr.d);
+        return 'as improper: ' + fmtFrac(s.n === fr.n && s.d === fr.d ? fr : { n: s.n, d: s.d });
+      }
+      if(fr.n !== 0n && bAbs(fr.n) >= fr.d){
+        var mx = improperToMixed(fr.n, fr.d);
+        return 'as mixed: ' + fmtMixed(mx);
+      }
+      return 'as decimal: ' + formatDecimal(fr.n, fr.d);
+    }catch(e){ return ''; }
+  }
+  function refreshToggles(){
+    $('tglA').textContent = operandAltText(inA.value);
+    $('tglB').textContent = operandAltText(inB.value);
+  }
+  $('tglA').addEventListener('click', function(){
+    try{
+      var P = parseFraction(inA.value);
+      if(P.isMixed){ var s = simplifyFrac(P.frac.n, P.frac.d); inA.value = fmtFrac({ n: s.n, d: s.d }); }
+      else { var mx = improperToMixed(P.frac.n, P.frac.d); inA.value = fmtMixed(mx); }
+      doSolve();
+    }catch(e){}
+  });
+  $('tglB').addEventListener('click', function(){
+    try{
+      var P = parseFraction(inB.value);
+      if(P.isMixed){ var s = simplifyFrac(P.frac.n, P.frac.d); inB.value = fmtFrac({ n: s.n, d: s.d }); }
+      else { var mx = improperToMixed(P.frac.n, P.frac.d); inB.value = fmtMixed(mx); }
+      doSolve();
+    }catch(e){}
+  });
+
+  function renderAnswer(r){
+    var box = $('answerBig');
+    if(ansMode === 'mixed' && r.resultMixedParts.n !== 0n){
+      var p = r.resultMixedParts;
+      box.innerHTML = mixedHTML(p.w, p.n, p.d, true);
+    } else {
+      box.innerHTML = fracHTML(r.result.n, r.result.d, true);
+    }
+    var approx = r.resultDecimalApprox && r.resultDecimalApprox !== r.resultDecimal
+      ? ' (≈ ' + esc(r.resultDecimalApprox) + ')' : '';
+    $('ansDecPct').innerHTML = '= <strong class="text-chalk">' + esc(r.resultDecimal) + '</strong>' + approx +
+      ' &nbsp;·&nbsp; <strong class="text-chalk">' + esc(r.resultPercent) + '</strong>';
+    $('ansMixed').classList.toggle('on', ansMode === 'mixed');
+    $('ansImproper').classList.toggle('on', ansMode === 'improper');
+  }
+  $('ansMixed').addEventListener('click', function(){ ansMode = 'mixed'; if(lastResult) renderAnswer(lastResult); });
+  $('ansImproper').addEventListener('click', function(){ ansMode = 'improper'; if(lastResult) renderAnswer(lastResult); });
+
+  function buildPrintSheet(r){
+    var html = '<h2>Fracify — Fraction Worksheet</h2>' +
+      '<p><strong>Problem:</strong> ' + esc(r.aText) + ' ' + esc(r.op) + ' ' + esc(r.bText) +
+      ' = <strong>' + esc(r.resultMixed) + '</strong> (' + esc(r.resultDecimal) + ' = ' + esc(r.resultPercent) + ')</p>';
+    r.steps.forEach(function(s, i){
+      html += '<div class="pstep"><h3>Step ' + (i + 1) + ' — ' + esc(s.title) + '</h3>' +
+        s.lines.map(function(l){ return '<p>' + esc(lineText(l)) + '</p>'; }).join('') + '</div>';
+    });
+    $('printSheet').innerHTML = html;
+  }
+
+  function doSolve(){
+    var r = solveProblem(currentOp, inA.value, inB.value);
+    refreshToggles();
+    if(!r.ok){
+      $('solveError').textContent = '⚠ ' + r.message;
+      $('solveError').classList.remove('hidden');
+      $('resultArea').classList.add('hidden');
+      lastResult = null;
+      return;
+    }
+    $('solveError').classList.add('hidden');
+    $('resultArea').classList.remove('hidden');
+    lastResult = r;
+    $('problemLine').innerHTML = esc(r.aText) + ' <span class="text-chalkamber font-bold">' + esc(r.op) +
+      '</span> ' + esc(r.bText) + ' = <strong class="text-chalk">' + esc(r.resultText) + '</strong>';
+    renderAnswer(r);
+    $('stepsList').innerHTML = renderSteps(r.steps);
+    buildPrintSheet(r);
+    try{ localStorage.setItem('fracify-last', JSON.stringify({ a: inA.value, b: inB.value, op: currentOp })); }catch(e){}
+  }
+
+  $('btnSolve').addEventListener('click', doSolve);
+  inA.addEventListener('keydown', function(e){ if(e.key === 'Enter') doSolve(); });
+  inB.addEventListener('keydown', function(e){ if(e.key === 'Enter') doSolve(); });
+  $('btnSwap').addEventListener('click', function(){
+    var t = inA.value; inA.value = inB.value; inB.value = t; doSolve();
+  });
+  $('btnClear').addEventListener('click', function(){
+    inA.value = ''; inB.value = '';
+    $('resultArea').classList.add('hidden');
+    $('solveError').classList.add('hidden');
+    refreshToggles(); inA.focus();
+  });
+  document.querySelectorAll('.exbtn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      inA.value = btn.getAttribute('data-a');
+      inB.value = btn.getAttribute('data-b');
+      var op = btn.getAttribute('data-op');
+      document.querySelectorAll('.opbtn').forEach(function(b){
+        b.classList.toggle('on', b.getAttribute('data-op') === op);
+      });
+      currentOp = op;
+      doSolve();
+      $('solver').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+  $('btnPrint').addEventListener('click', function(){ window.print(); });
+  $('btnCopy').addEventListener('click', function(){
+    if(!lastResult) return;
+    var txt = 'Fracify — ' + lastResult.aText + ' ' + lastResult.op + ' ' + lastResult.bText +
+      ' = ' + lastResult.resultMixed + '\n\n' + stepsText(lastResult.steps);
+    var done = function(){ $('btnCopy').textContent = '✓ Copied!'; setTimeout(function(){ $('btnCopy').textContent = '⧉ Copy all steps'; }, 1600); };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(done, function(){ fallbackCopy(txt); done(); });
+    } else { fallbackCopy(txt); done(); }
+  });
+  function fallbackCopy(txt){
+    var ta = document.createElement('textarea');
+    ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); }catch(e){}
+    document.body.removeChild(ta);
+  }
+
+  /* ---------- CONVERTER ---------- */
+  var convKind = 'fraction';
+  var convIn = $('convIn');
+  var kindPlaceholders = { fraction: 'e.g. 3/8 or 2 1/4', decimal: 'e.g. 0.375 or -2.5', percent: 'e.g. 37.5 or 150%' };
+  document.querySelectorAll('.ckind').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.ckind').forEach(function(b){ b.classList.remove('on'); });
+      btn.classList.add('on');
+      convKind = btn.getAttribute('data-kind');
+      convIn.placeholder = kindPlaceholders[convKind];
+      doConvert();
+      try{ localStorage.setItem('fracify-convkind', convKind); }catch(e){}
+    });
+  });
+
+  function doConvert(){
+    var r = convertAll(convKind, convIn.value);
+    if(!r.ok){
+      $('convError').textContent = '⚠ ' + r.message;
+      $('convError').classList.remove('hidden');
+      $('convOut').classList.add('hidden');
+      return;
+    }
+    $('convError').classList.add('hidden');
+    $('convOut').classList.remove('hidden');
+    $('convFrac').innerHTML = fracHTML(r.frac.n, r.frac.d, false);
+    var mp = r.mixedParts;
+    $('convMixed').innerHTML = mixedHTML(mp.w, mp.n, mp.d, false);
+    $('convDec').textContent = r.decimalText;
+    $('convDecNote').textContent = (r.decimalApprox && r.decimalApprox !== r.decimalText) ? '≈ ' + r.decimalApprox : '';
+    $('convPct').textContent = r.percentText;
+    $('convPctNote').textContent = '';
+    $('convSteps').innerHTML = r.steps.map(function(l){ return '<p>✎ ' + renderLine(l) + '</p>'; }).join('');
+  }
+  $('btnConvert').addEventListener('click', doConvert);
+  convIn.addEventListener('keydown', function(e){ if(e.key === 'Enter') doConvert(); });
+
+  /* ---------- SIMPLIFIER ---------- */
+  function doSimplify(){
+    var r = simplifyWithSteps($('simpIn').value);
+    if(!r.ok){
+      $('simpError').textContent = '⚠ ' + r.message;
+      $('simpError').classList.remove('hidden');
+      $('simpOut').classList.add('hidden');
+      return;
+    }
+    $('simpError').classList.add('hidden');
+    $('simpOut').classList.remove('hidden');
+    $('simpFrom').innerHTML = fracHTML(r.input.n, r.input.d, false);
+    $('simpTo').innerHTML = fracHTML(r.res.n, r.res.d, true);
+    var html = '';
+    r.steps.forEach(function(s){
+      html += '<p class="text-chalkamber font-hand text-base mt-2">✎ ' + esc(s.title) + '</p>';
+      s.lines.forEach(function(l){ html += '<p>' + renderLine(l) + '</p>'; });
+    });
+    $('simpSteps').innerHTML = html;
+  }
+  $('btnSimplify').addEventListener('click', doSimplify);
+  $('simpIn').addEventListener('keydown', function(e){ if(e.key === 'Enter') doSimplify(); });
+
+  /* ---------- INIT ---------- */
+  try{
+    var saved = JSON.parse(localStorage.getItem('fracify-last') || 'null');
+    if(saved){
+      if(saved.a !== undefined) inA.value = saved.a;
+      if(saved.b !== undefined) inB.value = saved.b;
+      if(saved.op){
+        currentOp = saved.op;
+        document.querySelectorAll('.opbtn').forEach(function(b){
+          b.classList.toggle('on', b.getAttribute('data-op') === saved.op);
+        });
+      }
+    }
+    var ck = localStorage.getItem('fracify-convkind');
+    if(ck && kindPlaceholders[ck]){
+      convKind = ck;
+      document.querySelectorAll('.ckind').forEach(function(b){
+        b.classList.toggle('on', b.getAttribute('data-kind') === ck);
+      });
+      convIn.placeholder = kindPlaceholders[ck];
+    }
+  }catch(e){}
+  doSolve();
+  doConvert();
+  doSimplify();
+})();
+</script>
+</body>
+</html>
